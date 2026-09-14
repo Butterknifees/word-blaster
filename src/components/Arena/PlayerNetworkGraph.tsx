@@ -107,22 +107,22 @@ export const PlayerNetworkGraph: React.FC<Props> = ({
   }, [movingTiles.length]);
 
   return (
-    <div className="relative w-full bg-white rounded-3xl p-4 md:p-5 border border-slate-200 shadow-cute-md flex flex-col items-center overflow-hidden">
+    <div className="relative w-full bg-white rounded-3xl p-2.5 sm:p-4 md:p-5 border border-slate-200 shadow-cute-md flex flex-col items-center overflow-hidden">
       {/* Header Pill */}
-      <div className="w-full flex items-center justify-between mb-1">
+      <div className="w-full flex items-center justify-between mb-0.5 sm:mb-1">
         <div className="flex items-center gap-1.5">
           <div className="w-2 h-2 rounded-full bg-[#FF385C] animate-pulse" />
-          <span className="font-display font-bold text-xs uppercase tracking-wider text-slate-500">
+          <span className="font-display font-bold text-[11px] sm:text-xs uppercase tracking-wider text-slate-500">
             Player Network &amp; Tile Tracks
           </span>
         </div>
-        <span className="text-[11px] font-medium text-slate-400">
-          {players.length} Players Connected
+        <span className="text-[10px] sm:text-[11px] font-medium text-slate-400">
+          {players.length} Connected
         </span>
       </div>
 
       {/* SVG Canvas for Network Graph */}
-      <div className="relative w-full max-w-[420px] h-[220px] sm:h-[300px] my-1">
+      <div className="relative w-full max-w-[420px] h-[150px] xs:h-[175px] sm:h-[220px] lg:h-[280px] my-0.5 sm:my-1">
         <svg className="w-full h-full overflow-visible" viewBox="0 0 400 320">
           <defs>
             {/* Soft gradient glow for edges */}

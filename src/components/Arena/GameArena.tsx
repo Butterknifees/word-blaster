@@ -13,7 +13,7 @@ import { GameOverModal } from './GameOverModal';
 import { ScoreboardStrip } from './ScoreboardStrip';
 import { DuplicateWordsPane } from './DuplicateWordsPane';
 import { PlayerNetworkGraph } from './PlayerNetworkGraph';
-import { Volume2, VolumeX, LogOut, Timer, AlertTriangle, Network, Grid, Flame } from 'lucide-react';
+import { Volume2, VolumeX, LogOut, Timer, AlertTriangle, Flame } from 'lucide-react';
 
 interface Props {
   room: GameRoom;
@@ -30,7 +30,6 @@ export const GameArena: React.FC<Props> = ({
   const [usedTileIndices, setUsedTileIndices] = useState<number[]>([]);
   const [soundMuted, setSoundMuted] = useState(!audio.enabled);
   const [showDuplicatePane, setShowDuplicatePane] = useState(false);
-  const [mobileTab, setMobileTab] = useState<'deck' | 'network'>('deck');
   const [blastAlert, setBlastAlert] = useState<{ text: string; color: string; isIncoming: boolean } | null>(null);
   const lastProcessedEventId = useRef<string | null>(null);
 
@@ -348,36 +347,10 @@ export const GameArena: React.FC<Props> = ({
         <ScoreboardStrip players={allPlayers} currentPlayerId={currentPlayerId} />
       </div>
 
-      {/* Mobile Tab Switcher (Visible on mobile/tablets < lg) */}
-      <div className="flex lg:hidden bg-white p-1 rounded-2xl border border-slate-200 shadow-cute-sm mb-2 w-full max-w-sm mx-auto">
-        <button
-          onClick={() => setMobileTab('deck')}
-          className={`flex-1 py-1.5 text-xs font-bold font-display rounded-xl flex items-center justify-center gap-1.5 transition ${
-            mobileTab === 'deck'
-              ? 'bg-[#FF385C] text-white shadow-cute-sm'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Grid className="w-3.5 h-3.5" />
-          <span>Word Deck</span>
-        </button>
-        <button
-          onClick={() => setMobileTab('network')}
-          className={`flex-1 py-1.5 text-xs font-bold font-display rounded-xl flex items-center justify-center gap-1.5 transition ${
-            mobileTab === 'network'
-              ? 'bg-[#FF385C] text-white shadow-cute-sm'
-              : 'text-slate-600 hover:text-slate-900'
-          }`}
-        >
-          <Network className="w-3.5 h-3.5" />
-          <span>Player Network</span>
-        </button>
-      </div>
-
       {/* Main Game Stage */}
       <div className="flex-1 flex flex-col lg:flex-row items-center lg:items-start justify-center gap-3 sm:gap-4 min-h-0">
-        {/* Left Side: Circular Nodes Player Network Graph */}
-        <div className={`w-full lg:w-[420px] shrink-0 ${mobileTab === 'network' ? 'block' : 'hidden lg:block'}`}>
+        {/* Circular Nodes Player Network Graph (Visible on BOTH mobile & desktop) */}
+        <div className="w-full max-w-xl lg:w-[380px] xl:w-[420px] shrink-0">
           <PlayerNetworkGraph
             players={allPlayers}
             currentPlayerId={currentPlayerId}
@@ -386,14 +359,14 @@ export const GameArena: React.FC<Props> = ({
         </div>
 
         {/* Center Deck: Word Drafting Arena & Tile Rack */}
-        <div className={`flex-1 w-full max-w-2xl flex flex-col justify-between gap-2 sm:gap-3 h-full ${mobileTab === 'deck' ? 'flex' : 'hidden lg:flex'}`}>
+        <div className="flex-1 w-full max-w-2xl flex flex-col justify-between gap-2 sm:gap-3 h-full">
           {/* Live Activity Feed */}
           <WordHistory events={room.recentEvents || []} />
 
           {/* Live Blast Alert Notification Banner */}
           {blastAlert && (
             <div
-              className={`w-full max-w-xl mx-auto py-2 px-4 rounded-2xl border text-center font-display font-bold text-xs sm:text-sm animate-bounce shadow-cute-md flex items-center justify-center gap-2 transition-all ${
+              className={`w-full max-w-xl mx-auto py-1.5 sm:py-2 px-3.5 sm:px-4 rounded-2xl border text-center font-display font-bold text-xs sm:text-sm animate-bounce shadow-cute-md flex items-center justify-center gap-2 transition-all ${
                 blastAlert.isIncoming
                   ? 'bg-[#FFF0F2] border-[#FF385C] text-[#FF385C]'
                   : 'bg-[#ECFDF5] border-[#10B981] text-[#065F46]'

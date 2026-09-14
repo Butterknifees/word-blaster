@@ -36,12 +36,12 @@ export const WordBuilder: React.FC<Props> = ({
   else if (draftWord.length >= 7) lengthMultiplier = 2.0;
 
   return (
-    <div className="w-full flex flex-col items-center gap-2">
+    <div className="w-full flex flex-col items-center gap-1.5 sm:gap-2">
       {/* Word Slots */}
-      <div className="flex items-center justify-center gap-2 min-h-[70px] p-3 bg-white/90 border border-slate-200 rounded-3xl w-full max-w-xl shadow-cute-sm backdrop-blur-sm">
+      <div className="flex items-center justify-center gap-1.5 sm:gap-2 min-h-[60px] sm:min-h-[70px] p-2 sm:p-3 bg-white/90 border border-slate-200 rounded-3xl w-full max-w-xl shadow-cute-sm backdrop-blur-sm">
         {draftWord.length === 0 ? (
-          <div className="text-xs md:text-sm text-slate-400 font-medium italic tracking-wide flex items-center gap-2">
-            <span>Type or click tiles to formulate a 4+ letter word</span>
+          <div className="text-xs sm:text-sm text-slate-400 font-medium italic tracking-wide flex items-center gap-2">
+            <span>Tap tiles below to formulate a 4+ letter word</span>
           </div>
         ) : (
           draftWord.map((letter, idx) => {
@@ -52,15 +52,15 @@ export const WordBuilder: React.FC<Props> = ({
               <button
                 key={`${letter}-${idx}`}
                 onClick={() => onRemoveLetter(idx)}
-                title={`Click or press Backspace to remove (${val} pts)`}
-                className="relative w-11 h-14 md:w-13 md:h-16 rounded-2xl bg-white border-2 border-[#FF385C] text-[#222222] font-display font-black text-xl md:text-2xl shadow-cute-tile hover:scale-105 active:scale-95 transition-all flex flex-col items-center justify-center group select-none"
+                title={`Tap to remove (${val} pts)`}
+                className="relative w-9 h-12 sm:w-11 sm:h-14 md:w-13 md:h-16 rounded-2xl bg-white border-2 border-[#FF385C] text-[#222222] font-display font-black text-lg sm:text-xl md:text-2xl shadow-cute-tile hover:scale-105 active:scale-95 transition-all flex flex-col items-center justify-center group select-none"
               >
                 <span>{letter}</span>
-                <span className={`text-[9px] font-mono px-1 py-0.2 rounded-full border font-bold ${badgeClass}`}>
+                <span className={`text-[8px] sm:text-[9px] font-mono px-1 py-0.2 rounded-full border font-bold ${badgeClass}`}>
                   +{val}
                 </span>
                 <span className="absolute -top-1.5 -right-1.5 opacity-0 group-hover:opacity-100 bg-[#FF385C] text-white rounded-full p-0.5 transition shadow">
-                  <XCircle className="w-3.5 h-3.5" />
+                  <XCircle className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
                 </span>
               </button>
             );
