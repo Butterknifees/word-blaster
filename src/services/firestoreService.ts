@@ -348,14 +348,17 @@ export async function submitWordPlay(
     timestamp: Date.now(),
   };
 
-  const updates: Partial<GameRoom> = {
+  const updates: Record<string, any> = {
     players: updatedPlayers,
     allWordsPlayed: [...(room.allWordsPlayed || []), upperWord],
     recentEvents: [wordEvent, ...(room.recentEvents || [])].slice(0, 20),
     status: newStatus,
-    winnerId,
-    endedAt: newStatus === 'ended' ? Date.now() : undefined,
   };
+
+  if (newStatus === 'ended') {
+    if (winnerId) updates.winnerId = winnerId;
+    updates.endedAt = Date.now();
+  }
 
   // Optimistic instantaneous local update
   const updatedRoom = { ...room, ...updates };
@@ -457,14 +460,17 @@ export async function submitWordPlay(
           timestamp: Date.now(),
         };
 
-        const liveUpdates: Partial<GameRoom> = {
+        const liveUpdates: Record<string, any> = {
           players: liveUpdatedPlayers,
           allWordsPlayed: [...(liveRoom.allWordsPlayed || []), upperWord],
           recentEvents: [liveWordEvent, ...(liveRoom.recentEvents || [])].slice(0, 20),
           status: liveNewStatus,
-          winnerId: liveWinnerId,
-          endedAt: liveNewStatus === 'ended' ? Date.now() : undefined,
         };
+
+        if (liveNewStatus === 'ended') {
+          if (liveWinnerId) liveUpdates.winnerId = liveWinnerId;
+          liveUpdates.endedAt = Date.now();
+        }
 
         transaction.update(roomRef, liveUpdates);
       });
@@ -559,11 +565,11 @@ export async function endGameByTimeout(roomId: string): Promise<void> {
     }
   }
 
-  const updates: Partial<GameRoom> = {
+  const updates: Record<string, any> = {
     status: 'ended',
-    winnerId,
     endedAt: Date.now(),
   };
+  if (winnerId) updates.winnerId = winnerId;
 
   if (isConfigured && db) {
     try {
