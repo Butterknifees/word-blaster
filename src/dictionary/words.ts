@@ -34,7 +34,8 @@ export async function loadFullDictionary(): Promise<number> {
   const dict = getDictionary();
 
   try {
-    const dictUrl = `${import.meta.env.BASE_URL || './'}dictionary.txt`;
+    const baseUrl = typeof import.meta !== 'undefined' && import.meta?.env?.BASE_URL ? import.meta.env.BASE_URL : './';
+    const dictUrl = `${baseUrl}dictionary.txt`;
     const res = await fetch(dictUrl);
     if (res.ok) {
       const text = await res.text();
