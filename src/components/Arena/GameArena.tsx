@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { GameRoom } from '../../types/game';
 import { isWordInDictionary } from '../../dictionary/words';
 import { calculateWordScore } from '../../config/letterDistribution';
@@ -13,7 +13,7 @@ import { GameOverModal } from './GameOverModal';
 import { ScoreboardStrip } from './ScoreboardStrip';
 import { DuplicateWordsPane } from './DuplicateWordsPane';
 import { PlayerNetworkGraph } from './PlayerNetworkGraph';
-import { Volume2, VolumeX, LogOut, Timer, AlertTriangle, Network, Grid } from 'lucide-react';
+import { Volume2, VolumeX, LogOut, Timer, AlertTriangle, Network, Grid, Flame } from 'lucide-react';
 
 interface Props {
   room: GameRoom;
@@ -31,6 +31,8 @@ export const GameArena: React.FC<Props> = ({
   const [soundMuted, setSoundMuted] = useState(!audio.enabled);
   const [showDuplicatePane, setShowDuplicatePane] = useState(false);
   const [mobileTab, setMobileTab] = useState<'deck' | 'network'>('deck');
+  const [blastAlert, setBlastAlert] = useState<{ text: string; color: string; isIncoming: boolean } | null>(null);
+  const lastProcessedEventId = useRef<string | null>(null);
 
   const duration = room.durationSeconds || 180; // default 3 minutes (180s)
   const [secondsLeft, setSecondsLeft] = useState<number>(() => {
@@ -98,6 +100,40 @@ export const GameArena: React.FC<Props> = ({
       setRackTiles(myPlayer.tiles);
     }
   }, [myPlayer?.tiles]);
+
+  // Listen for latest blast events to show animated alerts and play audio
+  useEffect(() => {
+    const latestEvent = room.recentEvents?.[0];
+    if (!latestEvent || latestEvent.id === lastProcessedEventId.current) return;
+    lastProcessedEventId.current = latestEvent.id;
+
+    if (latestEvent.playerId === currentPlayerId) {
+      setBlastAlert({
+        text: `🚀 You blasted ${latestEvent.blastedLetters.length} tiles to opponents!`,
+        color: '#10B981',
+        isIncoming: false,
+      });
+    } else if (latestEvent.targetPlayerIds.includes(currentPlayerId)) {
+      const incomingCount = latestEvent.blastedLetters.filter(
+        (_, idx) => latestEvent.targetPlayerIds[idx % latestEvent.targetPlayerIds.length] === currentPlayerId
+      ).length || 1;
+      setBlastAlert({
+        text: `💥 ${latestEvent.playerName} blasted +${incomingCount} tiles onto your rack!`,
+        color: '#FF385C',
+        isIncoming: true,
+      });
+      audio.playImpact();
+    } else {
+      setBlastAlert({
+        text: `✨ ${latestEvent.playerName} played "${latestEvent.word}" (+${latestEvent.score} pts)`,
+        color: '#0EA5E9',
+        isIncoming: false,
+      });
+    }
+
+    const timer = setTimeout(() => setBlastAlert(null), 3000);
+    return () => clearTimeout(timer);
+  }, [room.recentEvents, currentPlayerId]);
 
   // Word calculation & validation
   const wordString = draftWord.join('').toUpperCase();
@@ -353,6 +389,20 @@ export const GameArena: React.FC<Props> = ({
         <div className={`flex-1 w-full max-w-2xl flex flex-col justify-between gap-2 sm:gap-3 h-full ${mobileTab === 'deck' ? 'flex' : 'hidden lg:flex'}`}>
           {/* Live Activity Feed */}
           <WordHistory events={room.recentEvents || []} />
+
+          {/* Live Blast Alert Notification Banner */}
+          {blastAlert && (
+            <div
+              className={`w-full max-w-xl mx-auto py-2 px-4 rounded-2xl border text-center font-display font-bold text-xs sm:text-sm animate-bounce shadow-cute-md flex items-center justify-center gap-2 transition-all ${
+                blastAlert.isIncoming
+                  ? 'bg-[#FFF0F2] border-[#FF385C] text-[#FF385C]'
+                  : 'bg-[#ECFDF5] border-[#10B981] text-[#065F46]'
+              }`}
+            >
+              <Flame className="w-4 h-4 fill-current" />
+              <span>{blastAlert.text}</span>
+            </div>
+          )}
 
           {/* Word Drafting Card */}
           <div className="flex flex-col items-center justify-center my-0.5 sm:my-1">

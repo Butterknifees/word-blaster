@@ -6,6 +6,7 @@ import {
   updateDoc,
   onSnapshot,
   getDoc,
+  runTransaction,
   type Unsubscribe,
 } from 'firebase/firestore';
 import { getFirebaseApp } from '../config/firebase';
@@ -363,9 +364,112 @@ export async function submitWordPlay(
   if (isConfigured && db) {
     try {
       const roomRef = doc(db, 'rooms', formattedId);
-      await updateDoc(roomRef, updates);
+      await runTransaction(db, async (transaction) => {
+        const snap = await transaction.get(roomRef);
+        if (!snap.exists()) return;
+        const liveRoom = snap.data() as GameRoom;
+        if (liveRoom.status !== 'playing') return;
+
+        const livePlayer = liveRoom.players[playerId];
+        if (!livePlayer) return;
+
+        // 1. Remove played tiles from player's hand
+        const liveTiles = [...livePlayer.tiles];
+        for (const char of upperWord) {
+          const idx = liveTiles.indexOf(char);
+          if (idx !== -1) {
+            liveTiles.splice(idx, 1);
+          }
+        }
+
+        // 2. Select exactly N-1 letters to blast to opponents
+        const liveBlastCount = Math.max(0, upperWord.length - 1);
+        const liveWordLetters = upperWord.split('');
+        const liveShuffled = [...liveWordLetters].sort(() => Math.random() - 0.5);
+        const liveBlastedLetters = liveShuffled.slice(0, liveBlastCount);
+
+        const liveOpponentIds = Object.keys(liveRoom.players).filter((id) => id !== playerId);
+        const liveUpdatedPlayers = { ...liveRoom.players };
+
+        const liveNewScore = Math.max(0, (livePlayer.score || 0) + scoreDelta);
+        const liveNewTilesRemaining = liveTiles.length;
+
+        liveUpdatedPlayers[playerId] = {
+          ...livePlayer,
+          tiles: liveTiles,
+          tilesRemaining: liveNewTilesRemaining,
+          score: liveNewScore,
+          wordsMade: [
+            {
+              word: upperWord,
+              score: scoreDelta,
+              timestamp: Date.now(),
+              isDuplicate,
+            },
+            ...(livePlayer.wordsMade || []),
+          ],
+          consecutiveWords: isDuplicate ? 0 : (livePlayer.consecutiveWords || 0) + 1,
+        };
+
+        // 3. Distribute the N-1 blasted letters randomly across active opponents
+        const liveTargetPlayerIds: string[] = [];
+        if (liveOpponentIds.length > 0) {
+          liveBlastedLetters.forEach((letter) => {
+            const targetId = liveOpponentIds[Math.floor(Math.random() * liveOpponentIds.length)];
+            liveTargetPlayerIds.push(targetId);
+            const opp = liveUpdatedPlayers[targetId];
+            if (opp) {
+              const newOppTiles = [...opp.tiles, letter];
+              liveUpdatedPlayers[targetId] = {
+                ...opp,
+                tiles: newOppTiles,
+                tilesRemaining: newOppTiles.length,
+              };
+            }
+          });
+        }
+
+        let liveNewStatus: 'playing' | 'ended' = 'playing';
+        let liveWinnerId: string | undefined = undefined;
+
+        if (liveNewTilesRemaining === 0) {
+          liveNewStatus = 'ended';
+          liveUpdatedPlayers[playerId].score += 500;
+          let highestScore = -1;
+          for (const [pId, p] of Object.entries(liveUpdatedPlayers)) {
+            if (p.score > highestScore) {
+              highestScore = p.score;
+              liveWinnerId = pId;
+            }
+          }
+        }
+
+        const liveWordEvent: WordEvent = {
+          id: `event-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+          word: upperWord,
+          playerId,
+          playerName: livePlayer.name,
+          playerColor: livePlayer.color,
+          score: scoreDelta,
+          blastedLetters: liveBlastedLetters,
+          targetPlayerIds: liveTargetPlayerIds,
+          isDuplicate,
+          timestamp: Date.now(),
+        };
+
+        const liveUpdates: Partial<GameRoom> = {
+          players: liveUpdatedPlayers,
+          allWordsPlayed: [...(liveRoom.allWordsPlayed || []), upperWord],
+          recentEvents: [liveWordEvent, ...(liveRoom.recentEvents || [])].slice(0, 20),
+          status: liveNewStatus,
+          winnerId: liveWinnerId,
+          endedAt: liveNewStatus === 'ended' ? Date.now() : undefined,
+        };
+
+        transaction.update(roomRef, liveUpdates);
+      });
     } catch (err) {
-      console.warn("Firestore submitWordPlay error (local fallback active):", err);
+      console.warn("Firestore transaction submitWordPlay error:", err);
     }
   }
 }
