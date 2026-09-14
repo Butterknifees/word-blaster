@@ -89,20 +89,30 @@ export const GameArena: React.FC<Props> = ({
     setSoundMuted(!audio.enabled);
   };
 
+  // Local rack order
+  const [rackTiles, setRackTiles] = useState<string[]>(() => myPlayer?.tiles || []);
+
+  // Synchronize rack tiles when player's hand changes
+  useEffect(() => {
+    if (myPlayer?.tiles) {
+      setRackTiles(myPlayer.tiles);
+    }
+  }, [myPlayer?.tiles]);
+
   // Word calculation & validation
   const wordString = draftWord.join('').toUpperCase();
   const isValid = wordString.length >= room.minWordLength && isWordInDictionary(wordString);
-  const isDuplicate = isValid && room.allWordsPlayed.includes(wordString);
+  const isDuplicate = isValid && (room.allWordsPlayed || []).includes(wordString);
   const calculatedScore = isValid ? calculateWordScore(wordString, isDuplicate) : 0;
 
   // Select a letter from rack
   const handleSelectTile = useCallback((index: number) => {
-    if (!myPlayer || usedTileIndices.includes(index)) return;
-    const letter = myPlayer.tiles[index];
+    if (!rackTiles[index] || usedTileIndices.includes(index)) return;
+    const letter = rackTiles[index];
     setDraftWord((prev) => [...prev, letter]);
     setUsedTileIndices((prev) => [...prev, index]);
     audio.playTileClick();
-  }, [myPlayer, usedTileIndices]);
+  }, [rackTiles, usedTileIndices]);
 
   // Remove letter from draft
   const handleRemoveLetter = useCallback((letterIndex: number) => {
@@ -130,17 +140,17 @@ export const GameArena: React.FC<Props> = ({
 
   // Shuffle rack
   const handleShuffle = useCallback(() => {
-    if (!myPlayer) return;
     handleClear();
+    setRackTiles((prev) => [...prev].sort(() => Math.random() - 0.5));
     audio.playShuffle();
-  }, [handleClear, myPlayer]);
+  }, [handleClear]);
 
-  // Sort rack
+  // Sort rack alphabetically
   const handleSort = useCallback(() => {
-    if (!myPlayer) return;
     handleClear();
+    setRackTiles((prev) => [...prev].sort((a, b) => a.localeCompare(b)));
     audio.playTileClick();
-  }, [handleClear, myPlayer]);
+  }, [handleClear]);
 
   // Submit & Blast Word!
   const handleSubmitWord = useCallback(async () => {
@@ -152,17 +162,22 @@ export const GameArena: React.FC<Props> = ({
       audio.playBlast();
     }
 
+    const currentWord = wordString;
+    const currentScore = calculatedScore;
+    const currentIsDuplicate = isDuplicate;
+
+    // Instantly clear draft tiles from builder
+    setDraftWord([]);
+    setUsedTileIndices([]);
+
     try {
       await submitWordPlay(
         room.id,
         myPlayer.id,
-        wordString,
-        calculatedScore,
-        isDuplicate
+        currentWord,
+        currentScore,
+        currentIsDuplicate
       );
-
-      setDraftWord([]);
-      setUsedTileIndices([]);
     } catch (err) {
       console.warn("Could not submit word:", err);
     }
@@ -197,7 +212,7 @@ export const GameArena: React.FC<Props> = ({
 
       const key = e.key.toUpperCase();
       if (/^[A-Z]$/.test(key)) {
-        const availableIndex = myPlayer.tiles.findIndex(
+        const availableIndex = rackTiles.findIndex(
           (tile, idx) => tile === key && !usedTileIndices.includes(idx)
         );
 
@@ -214,6 +229,7 @@ export const GameArena: React.FC<Props> = ({
     room.status,
     isValid,
     draftWord.length,
+    rackTiles,
     usedTileIndices,
     handleSubmitWord,
     handleRemoveLetter,
@@ -364,7 +380,7 @@ export const GameArena: React.FC<Props> = ({
 
             {myPlayer && (
               <TileRack
-                tiles={myPlayer.tiles}
+                tiles={rackTiles}
                 usedTileIndices={usedTileIndices}
                 onSelectTile={handleSelectTile}
               />
