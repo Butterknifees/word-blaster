@@ -92,11 +92,16 @@ export const GameArena: React.FC<Props> = ({
 
   // Local rack order
   const [rackTiles, setRackTiles] = useState<string[]>(() => myPlayer?.tiles || []);
+  const lastKnownTilesSignature = useRef<string>(myPlayer?.tiles?.join(',') || '');
 
-  // Synchronize rack tiles when player's hand changes
+  // Synchronize rack tiles when player's hand changes (e.g. game start, receiving blasted tiles)
   useEffect(() => {
     if (myPlayer?.tiles) {
-      setRackTiles(myPlayer.tiles);
+      const sig = myPlayer.tiles.join(',');
+      if (sig !== lastKnownTilesSignature.current) {
+        lastKnownTilesSignature.current = sig;
+        setRackTiles(myPlayer.tiles);
+      }
     }
   }, [myPlayer?.tiles]);
 
@@ -200,8 +205,12 @@ export const GameArena: React.FC<Props> = ({
     const currentWord = wordString;
     const currentScore = calculatedScore;
     const currentIsDuplicate = isDuplicate;
+    const currentUsedIndices = [...usedTileIndices];
 
-    // Instantly clear draft tiles from builder
+    // Optimistically remove the consumed tiles from rack immediately
+    const remainingRack = rackTiles.filter((_, idx) => !currentUsedIndices.includes(idx));
+    lastKnownTilesSignature.current = remainingRack.join(',');
+    setRackTiles(remainingRack);
     setDraftWord([]);
     setUsedTileIndices([]);
 
@@ -216,7 +225,7 @@ export const GameArena: React.FC<Props> = ({
     } catch (err) {
       console.warn("Could not submit word:", err);
     }
-  }, [isValid, myPlayer, isDuplicate, room.id, wordString, calculatedScore]);
+  }, [isValid, myPlayer, isDuplicate, room.id, wordString, calculatedScore, rackTiles, usedTileIndices]);
 
   // Physical Keyboard listener
   useEffect(() => {
